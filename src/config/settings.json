@@ -1,0 +1,13 @@
+{
+  "homepage": "https://www.baidu.com",
+  "bookmarks": [
+    "https://www.baidu.com",
+    "https://www.bilibili.com",
+    "https://www.zhihu.com",
+    "https://github.com"
+  ],
+  "mouse_step": 12,
+  "camera_index": 0,
+  "theme": "light",
+  "language": "en"
+}

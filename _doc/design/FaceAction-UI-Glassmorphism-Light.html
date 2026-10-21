@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FaceAction · 面部控制助手 — 晨空 · 浅色玻璃拟态设计稿</title>
+<style>
+  /* ============ Design Tokens · 晨空 ============ */
+  :root {
+    /* Color · 晨空体系 */
+    --sky-grad: linear-gradient(140deg, #A5B4FC 0%, #C7D2FE 38%, #E0E7FF 68%, #FBCFE8 115%);
+    --ink: #1E1B4B;                       /* 墨蓝 · 文字 */
+    --ink-70: rgba(30, 27, 75, 0.7);
+    --ink-50: rgba(30, 27, 75, 0.5);
+    --ink-35: rgba(30, 27, 75, 0.35);
+    --primary: #6D28D9;                   /* 深紫 · 主色 */
+    --primary-deep: #5B21B6;
+    --primary-soft: rgba(109, 40, 217, 0.1);
+    --primary-glow: 0 8px 30px rgba(109, 40, 217, 0.28);
+
+    /* Glass · 白玻璃 */
+    --glass: rgba(255, 255, 255, 0.55);   /* 白玻璃 · 面板 55% */
+    --glass-strong: rgba(255, 255, 255, 0.7);
+    --stroke: rgba(255, 255, 255, 0.7);   /* 亮玻璃 · 描边 70% */
+    --stroke-strong: rgba(255, 255, 255, 0.9);
+    --blur: 14px;
+
+    /* Semantic */
+    --ok: #059669;
+    --warn: #D97706;
+    --err: #E11D48;
+
+    /* Radius */
+    --r-panel: 24px;
+    --r-chip: 16px;
+
+    /* Shadow */
+    --shadow-window: 0 40px 100px rgba(30, 27, 75, 0.35), 0 12px 36px rgba(30, 27, 75, 0.18);
+    --shadow-panel: 0 8px 28px rgba(30, 27, 75, 0.08);
+    --shadow-hover: 0 14px 40px rgba(30, 27, 75, 0.14);
+
+    /* Type scale · 1.25 模数：30 / 24 / 19 / 15 / 12 */
+    --fs-display: 30px;
+    --fs-h1: 24px;
+    --fs-h2: 19px;
+    --fs-body: 15px;
+    --fs-caption: 12px;
+
+    /* Motion */
+    --t-fast: 160ms cubic-bezier(.4, 0, .2, 1);
+    --t-normal: 300ms cubic-bezier(.4, 0, .2, 1);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: "Segoe UI Variable", "Segoe UI", "Microsoft YaHei UI", "PingFang SC", system-ui, sans-serif;
+    color: var(--ink);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 48px 24px;
+    overflow-x: hidden;
+    background: var(--sky-grad);
+    background-attachment: fixed;
+  }
+
+  /* 晨空气泡 · 通透衬托 */
+  .bubble {
+    position: fixed;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.35);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    filter: blur(2px);
+    z-index: 0;
+    animation: float 16s ease-in-out infinite alternate;
+  }
+  .bubble-1 { width: 300px; height: 300px; left: 5%; top: 10%; animation-delay: 0s; }
+  .bubble-2 { width: 180px; height: 180px; right: 8%; top: 18%; animation-delay: -5s; }
+  .bubble-3 { width: 240px; height: 240px; left: 42%; bottom: 4%; animation-delay: -9s; }
+  .bubble-4 { width: 120px; height: 120px; right: 22%; bottom: 22%; animation-delay: -13s; }
+  @keyframes float {
+    from { transform: translateY(0) scale(1); }
+    to   { transform: translateY(-36px) scale(1.06); }
+  }
+
+  /* ============ App Window ============ */
+  .window {
+    position: relative;
+    z-index: 1;
+    width: 1260px;
+    max-width: 100%;
+    height: 800px;
+    border-radius: var(--r-panel);
+    background: var(--glass);
+    backdrop-filter: blur(var(--blur)) saturate(1.35);
+    -webkit-backdrop-filter: blur(var(--blur)) saturate(1.35);
+    border: 1px solid var(--stroke-strong);
+    box-shadow: var(--shadow-window);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* ---- Title bar ---- */
+  .titlebar {
+    height: 52px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    padding-left: 20px;
+    user-select: none;
+    background: rgba(255, 255, 255, 0.35);
+    border-bottom: 1px solid var(--stroke);
+  }
+  .app-logo {
+    width: 30px; height: 30px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #8B5CF6, #6D28D9);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px;
+    box-shadow: var(--primary-glow);
+    margin-right: 12px;
+  }
+  .app-title {
+    font-size: var(--fs-h2);
+    font-weight: 300;                    /* 展示 · Light 300 */
+    letter-spacing: 0.1em;               /* 宽字距 */
+    color: var(--ink);
+  }
+  .app-title span {
+    color: var(--ink-35);
+    font-weight: 400;
+    margin-left: 10px;
+    font-size: var(--fs-caption);
+    letter-spacing: 0.04em;
+  }
+
+  .titlebar-status { display: flex; align-items: center; gap: 10px; margin-left: 28px; }
+  .status-pill {
+    display: inline-flex; align-items: center; gap: 7px;
+    font-size: var(--fs-caption);
+    color: var(--ink-70);
+    background: rgba(255, 255, 255, 0.5);
+    border: 1px solid var(--stroke);
+    padding: 5px 12px;
+    border-radius: 20px;
+  }
+  .dot { width: 6px; height: 6px; border-radius: 50%; }
+  .dot-live { background: var(--ok); box-shadow: 0 0 8px rgba(5, 150, 105, 0.6); animation: pulse 2s infinite; }
+  .dot-guard { background: var(--primary); box-shadow: 0 0 8px rgba(109, 40, 217, 0.6); }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+  .win-controls { margin-left: auto; display: flex; height: 100%; }
+  .win-btn {
+    width: 48px; height: 100%;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--ink-50);
+    cursor: pointer;
+    transition: background var(--t-fast), color var(--t-fast);
+  }
+  .win-btn:hover { background: rgba(30, 27, 75, 0.07); color: var(--ink); }
+  .win-btn.close:hover { background: #E11D48; color: #fff; }
+  .win-btn svg { width: 11px; height: 11px; stroke: currentColor; stroke-width: 1.2; fill: none; }
+
+  /* ---- Body · 留白率 ≈35% ---- */
+  .body {
+    flex: 1;
+    display: flex;
+    gap: 22px;
+    padding: 24px;
+    min-height: 0;
+  }
+
+  .glass {
+    background: var(--glass);
+    border: 1px solid var(--stroke);
+    backdrop-filter: blur(var(--blur));
+    -webkit-backdrop-filter: blur(var(--blur));
+    border-radius: var(--r-panel);
+  }
+
+  /* ---- Left column ---- */
+  .main-col { flex: 1; display: flex; flex-direction: column; gap: 22px; min-width: 0; }
+
+  .video-frame {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+    border-radius: var(--r-panel);
+    overflow: hidden;
+    background: linear-gradient(180deg, #232058 0%, #1E1B4B 100%);  /* 深色摄像头画面 · 视觉锚点 */
+    border: 1px solid var(--stroke-strong);
+    box-shadow: var(--shadow-panel), inset 0 0 80px rgba(30, 27, 75, 0.5);
+  }
+  .video-feed {
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(560px 380px at 50% 42%, rgba(167, 139, 250, 0.18), transparent 70%),
+      repeating-linear-gradient(0deg, rgba(255,255,255,0.015) 0 2px, transparent 2px 4px);
+  }
+  .scanline {
+    position: absolute; left: 0; right: 0; height: 90px;
+    background: linear-gradient(180deg, transparent, rgba(167, 139, 250, 0.12), transparent);
+    animation: scan 4.5s ease-in-out infinite;
+    pointer-events: none;
+  }
+  @keyframes scan { 0% { top: -12%; } 55% { top: 96%; } 100% { top: -12%; } }
+
+  /* face mesh · 深紫线框 */
+  .face-mesh {
+    position: absolute;
+    left: 50%; top: 46%;
+    transform: translate(-50%, -50%);
+    width: 300px; height: 340px;
+  }
+  .face-mesh svg { width: 100%; height: 100%; overflow: visible; }
+  .mesh-line { stroke: rgba(196, 181, 253, 0.5); stroke-width: 1; fill: none; }
+  .mesh-dot { fill: rgba(196, 181, 253, 0.9); }
+  .mesh-core { fill: #C4B5FD; }
+  .face-ring {
+    position: absolute; left: 50%; top: 46%;
+    transform: translate(-50%, -50%);
+    width: 330px; height: 380px;
+    border-radius: 48% 52% 50% 50% / 55% 48% 52% 45%;
+    border: 1.5px dashed rgba(196, 181, 253, 0.45);
+    animation: breathe 3.2s ease-in-out infinite;
+  }
+  @keyframes breathe { 0%,100% { transform: translate(-50%,-50%) scale(1); opacity: .7; } 50% { transform: translate(-50%,-50%) scale(1.05); opacity: 1; } }
+
+  /* HUD · 亮玻璃反白 */
+  .hud {
+    position: absolute;
+    display: flex; align-items: center; gap: 8px;
+    font-size: var(--fs-caption);
+    padding: 7px 14px;
+    border-radius: var(--r-chip);
+    background: rgba(255, 255, 255, 0.78);
+    border: 1px solid var(--stroke-strong);
+    backdrop-filter: blur(var(--blur));
+    -webkit-backdrop-filter: blur(var(--blur));
+    color: var(--ink);
+    box-shadow: 0 4px 16px rgba(30, 27, 75, 0.12);
+  }
+  .hud-tl { top: 16px; left: 16px; color: var(--ink-70); }
+  .hud-tl b { color: var(--primary); font-weight: 600; }
+  .hud-tl .rec-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--primary); box-shadow: 0 0 8px rgba(109,40,217,0.7); }
+  .hud-tr { top: 16px; right: 16px; font-family: "Cascadia Code", "JetBrains Mono", Consolas, monospace; color: var(--ink-70); }
+  .hud-tr em { font-style: normal; color: var(--ink); }
+  .hud-bl { bottom: 16px; left: 16px; font-family: "Cascadia Code", "JetBrains Mono", Consolas, monospace; gap: 16px; }
+  .hud-bl .metric { display: flex; flex-direction: column; gap: 2px; }
+  .hud-bl .metric small { font-size: 10px; color: var(--ink-35); letter-spacing: 0.5px; }
+  .hud-bl .metric b { font-size: var(--fs-caption); font-weight: 600; color: var(--ink); }
+  .hud-bl .metric b.hi { color: var(--primary); }
+
+  /* gesture toast */
+  .gesture-toast {
+    position: absolute;
+    bottom: 18px; left: 50%; transform: translateX(-50%);
+    display: flex; align-items: center; gap: 10px;
+    padding: 11px 20px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.82);
+    border: 1px solid var(--stroke-strong);
+    backdrop-filter: blur(var(--blur));
+    -webkit-backdrop-filter: blur(var(--blur));
+    box-shadow: var(--primary-glow);
+    font-size: var(--fs-body);
+    color: var(--ink);
+    animation: toast-in 500ms cubic-bezier(.2,.9,.3,1.2);
+  }
+  .gesture-toast .g-icon { font-size: 18px; }
+  .gesture-toast .g-action { color: var(--primary); font-weight: 600; }
+  @keyframes toast-in { from { opacity: 0; transform: translateX(-50%) translateY(14px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
+
+  /* no-face state */
+  .no-face-mask {
+    position: absolute; inset: 0;
+    display: none;
+    flex-direction: column;
+    align-items: center; justify-content: center; gap: 14px;
+    background: rgba(255, 255, 255, 0.82);
+    backdrop-filter: blur(var(--blur));
+  }
+  .no-face-mask.show { display: flex; }
+  .no-face-mask .big-icon { font-size: 46px; }
+  .no-face-mask .t1 { font-size: var(--fs-h2); font-weight: 300; letter-spacing: 0.06em; color: var(--ink); }
+  .no-face-mask .t2 { font-size: var(--fs-caption); color: var(--ink-50); font-family: Consolas, monospace; }
+
+  /* ---- Menu bar · 双主菜单 ---- */
+  .menu-bar { display: flex; gap: 22px; flex-shrink: 0; }
+
+  .menu-card {
+    flex: 1;
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    padding: 22px 26px;
+    border-radius: var(--r-panel);
+    background: var(--glass);
+    border: 1px solid var(--stroke);
+    backdrop-filter: blur(var(--blur));
+    -webkit-backdrop-filter: blur(var(--blur));
+    cursor: pointer;
+    transition: all var(--t-normal);
+    overflow: hidden;
+    box-shadow: var(--shadow-panel);
+  }
+  .menu-card:hover {
+    background: var(--glass-strong);
+    border-color: var(--stroke-strong);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-hover);
+  }
+  .menu-card .m-icon {
+    width: 56px; height: 56px;
+    border-radius: 18px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 25px;
+    background: rgba(255, 255, 255, 0.6);
+    border: 1px solid var(--stroke);
+    flex-shrink: 0;
+  }
+  .menu-card .m-text { flex: 1; min-width: 0; }
+  .menu-card .m-title {
+    font-size: var(--fs-h2);
+    font-weight: 400;
+    letter-spacing: 0.06em;
+    margin-bottom: 5px;
+    display: flex; align-items: center; gap: 8px;
+    color: var(--ink);
+  }
+  .menu-card .m-sub { font-size: var(--fs-caption); color: var(--ink-50); line-height: 1.6; }
+  .menu-card .m-kbd {
+    font-size: 11px; color: var(--ink-35);
+    margin-top: 7px;
+    font-family: Consolas, monospace;
+  }
+  .menu-card .m-kbd b { color: var(--ink-70); font-weight: 600; }
+
+  /* active mode · 深紫主色 */
+  .menu-card.active {
+    background: linear-gradient(140deg, rgba(255,255,255,0.72), rgba(196,181,253,0.35));
+    border-color: rgba(109, 40, 217, 0.45);
+    box-shadow: var(--primary-glow);
+  }
+  .menu-card.active .m-icon {
+    background: linear-gradient(135deg, #8B5CF6, #6D28D9);
+    border-color: transparent;
+    box-shadow: var(--primary-glow);
+  }
+  .menu-card.active .m-title { color: var(--primary-deep); }
+  .menu-card.active::after {
+    content: "使用中";
+    position: absolute; top: 14px; right: 16px;
+    font-size: 11px; font-weight: 600;
+    letter-spacing: 0.08em;
+    color: #fff;
+    background: linear-gradient(135deg, #8B5CF6, #6D28D9);
+    padding: 4px 11px;
+    border-radius: 20px;
+  }
+
+  /* toggle switch */
+  .toggle {
+    width: 52px; height: 28px;
+    border-radius: 20px;
+    background: rgba(30, 27, 75, 0.14);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    position: relative;
+    flex-shrink: 0;
+    transition: all var(--t-normal);
+    cursor: pointer;
+  }
+  .toggle::before {
+    content: "";
+    position: absolute; top: 3px; left: 3px;
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 1px 4px rgba(30, 27, 75, 0.25);
+    transition: all var(--t-normal);
+  }
+  .toggle.on {
+    background: linear-gradient(135deg, #8B5CF6, #6D28D9);
+    border-color: transparent;
+    box-shadow: var(--primary-glow);
+  }
+  .toggle.on::before { left: 27px; }
+  .toggle-label {
+    font-size: var(--fs-caption);
+    color: var(--ink-50);
+    font-weight: 600;
+    width: 30px; text-align: center;
+  }
+
+  /* ---- Right sidebar ---- */
+  .side-col { width: 310px; flex-shrink: 0; display: flex; flex-direction: column; gap: 22px; min-height: 0; }
+
+  .panel { padding: 20px; display: flex; flex-direction: column; gap: 14px; box-shadow: var(--shadow-panel); }
+  .panel-title {
+    font-size: var(--fs-caption);
+    font-weight: 400;
+    letter-spacing: 0.18em;
+    color: var(--ink-35);
+    display: flex; align-items: center; gap: 10px;
+  }
+  .panel-title::after { content: ""; flex: 1; height: 1px; background: rgba(255, 255, 255, 0.8); }
+
+  /* gesture list */
+  .gesture-row { display: flex; align-items: center; gap: 12px; }
+  .gesture-row .g-emoji { font-size: 16px; width: 22px; text-align: center; }
+  .gesture-row .g-name { font-size: var(--fs-caption); width: 66px; color: var(--ink-70); flex-shrink: 0; }
+  .g-bar {
+    flex: 1; height: 6px;
+    border-radius: 4px;
+    background: rgba(30, 27, 75, 0.08);
+    overflow: hidden;
+  }
+  .g-bar i {
+    display: block; height: 100%;
+    border-radius: 4px;
+    background: linear-gradient(90deg, #8B5CF6, #6D28D9);
+    width: 0%;
+    transition: width 120ms linear;
+  }
+  .g-val { font-size: 11px; font-family: Consolas, monospace; color: var(--ink-35); width: 34px; text-align: right; }
+
+  /* log */
+  .log-panel { flex: 1; min-height: 0; }
+  .log-list {
+    flex: 1;
+    overflow-y: auto;
+    display: flex; flex-direction: column; gap: 9px;
+    font-family: Consolas, "Cascadia Code", monospace;
+    font-size: 11.5px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(30,27,75,0.2) transparent;
+  }
+  .log-item { display: flex; gap: 8px; line-height: 1.5; animation: log-in 300ms ease; }
+  @keyframes log-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+  .log-time { color: var(--ink-35); flex-shrink: 0; }
+  .log-msg { color: var(--ink-70); }
+  .log-msg b { color: var(--primary); font-weight: 600; }
+  .log-msg b.red { color: var(--err); }
+  .log-msg b.green { color: var(--ok); }
+
+  /* system */
+  .sys-grid { display: flex; flex-direction: column; gap: 9px; }
+  .sys-row { display: flex; justify-content: space-between; font-size: var(--fs-caption); }
+  .sys-row .k { color: var(--ink-35); }
+  .sys-row .v { color: var(--ink-70); font-family: Consolas, monospace; }
+  .sys-row .v.ok { color: var(--ok); }
+  .privacy-note {
+    margin-top: 4px;
+    font-size: 11px; line-height: 1.7;
+    color: var(--ink-50);
+    padding: 12px 14px;
+    border-radius: var(--r-chip);
+    background: rgba(255, 255, 255, 0.45);
+    border: 1px solid var(--stroke);
+  }
+  .privacy-note b { color: var(--ok); font-weight: 600; }
+
+  /* footer hints */
+  .hintbar {
+    flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center; gap: 26px;
+    padding: 10px 20px 16px;
+    font-size: 11px;
+    color: var(--ink-35);
+    letter-spacing: 0.04em;
+  }
+  .hintbar .h-item { display: flex; align-items: center; gap: 7px; }
+  .hintbar .h-key {
+    padding: 3px 9px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.5);
+    border: 1px solid var(--stroke);
+    font-family: Consolas, monospace;
+    color: var(--ink-70);
+  }
+</style>
+</head>
+<body>
+
+<div class="bubble bubble-1"></div>
+<div class="bubble bubble-2"></div>
+<div class="bubble bubble-3"></div>
+<div class="bubble bubble-4"></div>
+
+<div class="window">
+
+  <!-- ================= Title bar ================= -->
+  <header class="titlebar">
+    <div class="app-logo">👁</div>
+    <div class="app-title">FaceAction<span>面部控制助手 v0.5</span></div>
+    <div class="titlebar-status">
+      <div class="status-pill"><span class="dot dot-live"></span>摄像头已连接 · 1080p</div>
+      <div class="status-pill" id="guardPill" style="display:none"><span class="dot dot-guard"></span>防偷窥已开启</div>
+    </div>
+    <div class="win-controls">
+      <div class="win-btn" title="最小化">
+        <svg viewBox="0 0 12 12"><line x1="1" y1="6" x2="11" y2="6"/></svg>
+      </div>
+      <div class="win-btn" title="最大化">
+        <svg viewBox="0 0 12 12"><rect x="1.5" y="1.5" width="9" height="9" rx="1.5"/></svg>
+      </div>
+      <div class="win-btn close" title="关闭">
+        <svg viewBox="0 0 12 12"><line x1="1.5" y1="1.5" x2="10.5" y2="10.5"/><line x1="10.5" y1="1.5" x2="1.5" y2="10.5"/></svg>
+      </div>
+    </div>
+  </header>
+
+  <!-- ================= Body ================= -->
+  <div class="body">
+
+    <!-- ===== Left: video + menu ===== -->
+    <div class="main-col">
+
+      <!-- Video preview -->
+      <div class="video-frame">
+        <div class="video-feed"></div>
+        <div class="scanline"></div>
+
+        <!-- face mesh -->
+        <div class="face-mesh">
+          <svg viewBox="0 0 300 340">
+            <path class="mesh-line" d="M150 22 C 220 22, 258 90, 254 165 C 250 245, 205 305, 150 318 C 95 305, 50 245, 46 165 C 42 90, 80 22, 150 22 Z"/>
+            <path class="mesh-line" d="M85 125 C 105 112, 130 110, 143 118"/>
+            <path class="mesh-line" d="M157 118 C 170 110, 195 112, 215 125"/>
+            <ellipse class="mesh-line" cx="114" cy="145" rx="26" ry="13"/>
+            <ellipse class="mesh-line" cx="186" cy="145" rx="26" ry="13"/>
+            <circle class="mesh-core" cx="114" cy="145" r="5"/>
+            <circle class="mesh-core" cx="186" cy="145" r="5"/>
+            <path class="mesh-line" d="M150 155 L 145 195 M 150 155 L 155 195 M 133 200 C 142 207, 158 207, 167 200"/>
+            <path class="mesh-line" d="M108 248 C 128 236, 172 236, 192 248 C 172 268, 128 268, 108 248 Z"/>
+            <path class="mesh-line" d="M108 248 C 128 252, 172 252, 192 248"/>
+          </svg>
+        </div>
+        <div class="face-ring"></div>
+
+        <!-- HUD -->
+        <div class="hud hud-tl"><span class="rec-dot"></span>实时检测 <b>FaceMesh · 468 pts</b></div>
+        <div class="hud hud-tr">FPS <em>29.8</em>&nbsp;|&nbsp;延迟 <em>12ms</em></div>
+        <div class="hud hud-bl">
+          <div class="metric"><small>PITCH 俯仰</small><b class="hi" id="vPitch">-12.4°</b></div>
+          <div class="metric"><small>YAW 偏航</small><b id="vYaw">+3.1°</b></div>
+          <div class="metric"><small>ROLL 翻滚</small><b id="vRoll">-1.8°</b></div>
+          <div class="metric"><small>状态</small><b style="color:var(--ok)">FACE_OK</b></div>
+        </div>
+
+        <!-- gesture toast -->
+        <div class="gesture-toast" id="toast">
+          <span class="g-icon" id="toastIcon">👍</span>
+          <span>识别到 <span class="g-action" id="toastAction">点头</span> → <span id="toastResult">下一条视频 (↓)</span></span>
+        </div>
+
+        <!-- no-face mask -->
+        <div class="no-face-mask" id="noFaceMask">
+          <div class="big-icon">🫥</div>
+          <div class="t1">未检测到人脸 · 已切换到桌面</div>
+          <div class="t2">Win+D 已发送 · 人脸回归后自动恢复</div>
+        </div>
+      </div>
+
+      <!-- ===== Two main menus ===== -->
+      <div class="menu-bar">
+        <div class="menu-card active" id="cardDouyin" onclick="selectDouyin()">
+          <div class="m-icon">🎵</div>
+          <div class="m-text">
+            <div class="m-title">看抖音</div>
+            <div class="m-sub">点头 → 下一条 · 抬头 → 上一条</div>
+            <div class="m-kbd">张嘴×2 <b>返回菜单</b></div>
+          </div>
+        </div>
+
+        <div class="menu-card" id="cardGuard" onclick="toggleGuard(event)">
+          <div class="m-icon">🛡️</div>
+          <div class="m-text">
+            <div class="m-title">防偷窥</div>
+            <div class="m-sub">人脸离开 → 自动切桌面 · 回归 → 恢复</div>
+            <div class="m-kbd">点头 <b>切换 开/关</b></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span class="toggle-label" id="guardLabel">关</span>
+            <div class="toggle" id="guardToggle"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== Right sidebar ===== -->
+    <div class="side-col">
+
+      <!-- gesture recognition -->
+      <div class="glass panel">
+        <div class="panel-title">动作识别</div>
+        <div class="gesture-row"><span class="g-emoji">👍</span><span class="g-name">点头</span><div class="g-bar"><i id="bNod"></i></div><span class="g-val" id="vNod">0%</span></div>
+        <div class="gesture-row"><span class="g-emoji">👆</span><span class="g-name">抬头</span><div class="g-bar"><i id="bUp"></i></div><span class="g-val" id="vUp">0%</span></div>
+        <div class="gesture-row"><span class="g-emoji">👈</span><span class="g-name">左摇</span><div class="g-bar"><i id="bL"></i></div><span class="g-val" id="vL">0%</span></div>
+        <div class="gesture-row"><span class="g-emoji">👉</span><span class="g-name">右摇</span><div class="g-bar"><i id="bR"></i></div><span class="g-val" id="vR">0%</span></div>
+        <div class="gesture-row"><span class="g-emoji">😮</span><span class="g-name">张嘴×2</span><div class="g-bar"><i id="bM"></i></div><span class="g-val" id="vM">0%</span></div>
+      </div>
+
+      <!-- log -->
+      <div class="glass panel log-panel">
+        <div class="panel-title">运行日志</div>
+        <div class="log-list" id="logList"></div>
+      </div>
+
+      <!-- system -->
+      <div class="glass panel">
+        <div class="panel-title">系统状态</div>
+        <div class="sys-grid">
+          <div class="sys-row"><span class="k">摄像头</span><span class="v ok">Integrated Camera ✓</span></div>
+          <div class="sys-row"><span class="k">检测模型</span><span class="v">MediaPipe FaceMesh</span></div>
+          <div class="sys-row"><span class="k">防偷窥防抖</span><span class="v">500ms</span></div>
+          <div class="sys-row"><span class="k">运行模式</span><span class="v" id="modeText">看抖音</span></div>
+        </div>
+        <div class="privacy-note"><b>🔒 隐私安全</b> — 所有画面均在本地离线处理，不上传任何数据。</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- footer hints -->
+  <div class="hintbar">
+    <div class="h-item"><span class="h-key">点头</span> 确认 / 下一条</div>
+    <div class="h-item"><span class="h-key">抬头</span> 上一条</div>
+    <div class="h-item"><span class="h-key">左摇 / 右摇</span> 切换菜单项</div>
+    <div class="h-item"><span class="h-key">张嘴×2</span> 返回选择态</div>
+  </div>
+</div>
+
+<script>
+  /* ---------- state ---------- */
+  let mode = 'douyin';
+  let guardOn = false;
+
+  const $ = id => document.getElementById(id);
+  const now = () => new Date().toTimeString().slice(0, 8);
+
+  function log(html) {
+    const list = $('logList');
+    const div = document.createElement('div');
+    div.className = 'log-item';
+    div.innerHTML = `<span class="log-time">${now()}</span><span class="log-msg">${html}</span>`;
+    list.prepend(div);
+    while (list.children.length > 24) list.lastChild.remove();
+  }
+
+  /* ---------- menu interaction ---------- */
+  function selectDouyin() {
+    if (mode === 'douyin') return;
+    mode = 'douyin';
+    $('cardDouyin').classList.add('active');
+    $('modeText').textContent = '看抖音';
+    $('toastIcon').textContent = '🎵';
+    $('toastAction').textContent = '点头确认';
+    $('toastResult').textContent = '进入看抖音 · 已打开抖音';
+    log('<b>进入看抖音模式</b>，已打开抖音网页');
+  }
+
+  function toggleGuard(e) {
+    e.stopPropagation();
+    guardOn = !guardOn;
+    $('guardToggle').classList.toggle('on', guardOn);
+    $('guardLabel').textContent = guardOn ? '开' : '关';
+    $('guardPill').style.display = guardOn ? 'flex' : 'none';
+    if (guardOn) {
+      log('<b class="green">防偷窥已开启</b> — 人脸离开画面 500ms 后自动 Win+D');
+    } else {
+      log('防偷窥已<b class="red">关闭</b>');
+      $('noFaceMask').classList.remove('show');
+    }
+  }
+
+  /* ---------- demo: no-face simulation ---------- */
+  $('noFaceMask').addEventListener('dblclick', () => $('noFaceMask').classList.remove('show'));
+  $('cardGuard').addEventListener('dblclick', () => {
+    if (!guardOn) return;
+    $('noFaceMask').classList.add('show');
+    log('<b class="red">no_face</b> 持续 500ms → 已发送 <b>Win+D</b> 切至桌面');
+    setTimeout(() => {
+      $('noFaceMask').classList.remove('show');
+      log('人脸回归 → <b class="green">已恢复</b> 浏览器窗口');
+    }, 3000);
+  });
+
+  /* ---------- fake gesture telemetry ---------- */
+  const gestures = [
+    { bar: 'bNod', val: 'vNod' }, { bar: 'bUp', val: 'vUp' },
+    { bar: 'bL', val: 'vL' }, { bar: 'bR', val: 'vR' }, { bar: 'bM', val: 'vM' }
+  ];
+  setInterval(() => {
+    gestures.forEach(g => {
+      const v = Math.random() < 0.82 ? Math.random() * 55 : 40 + Math.random() * 60;
+      $(g.bar).style.width = v + '%';
+      $(g.val).textContent = Math.round(v) + '%';
+    });
+    $('vPitch').textContent = (Math.random() * 30 - 15).toFixed(1) + '°';
+    $('vYaw').textContent = (Math.random() * 24 - 12).toFixed(1) + '°';
+    $('vRoll').textContent = (Math.random() * 8 - 4).toFixed(1) + '°';
+  }, 700);
+
+  /* ---------- rotating demo toasts ---------- */
+  const demoToasts = [
+    { i: '👍', a: '点头', r: '下一条视频 (↓)' },
+    { i: '👆', a: '抬头', r: '上一条视频 (↑)' },
+    { i: '😮', a: '张嘴×2', r: '返回选择态' }
+  ];
+  let ti = 0;
+  setInterval(() => {
+    if (mode !== 'douyin') return;
+    ti = (ti + 1) % demoToasts.length;
+    const t = demoToasts[ti];
+    $('toastIcon').textContent = t.i;
+    $('toastAction').textContent = t.a;
+    $('toastResult').textContent = t.r;
+    $('toast').style.animation = 'none';
+    void $('toast').offsetWidth;
+    $('toast').style.animation = '';
+  }, 3600);
+
+  /* ---------- boot logs ---------- */
+  log('FaceMesh 模型加载完成，468 关键点就绪');
+  log('摄像头就绪 <b>1080p · 30fps</b>');
+  log('<b>FaceAction</b> 启动完成 v0.5.0');
+</script>
+</body>
+</html>

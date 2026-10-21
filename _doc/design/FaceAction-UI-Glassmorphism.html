@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FaceAction · 面部控制助手 — 玻璃拟态界面设计稿</title>
+<style>
+  /* ============ Design Tokens ============ */
+  :root {
+    /* Color */
+    --bg-deep: #0b0f1a;
+    --accent-cyan: #25f4ee;
+    --accent-red: #fe2c55;
+    --accent-blue: #5b8cff;
+    --accent-purple: #7c3aed;
+    --text-primary: #f5f7fa;
+    --text-secondary: rgba(235, 240, 255, 0.58);
+    --text-tertiary: rgba(235, 240, 255, 0.36);
+
+    /* Glass */
+    --glass-bg: rgba(255, 255, 255, 0.055);
+    --glass-bg-strong: rgba(255, 255, 255, 0.09);
+    --glass-border: rgba(255, 255, 255, 0.12);
+    --glass-border-strong: rgba(255, 255, 255, 0.2);
+    --glass-blur: 24px;
+
+    /* Gradient */
+    --grad-accent: linear-gradient(135deg, #25f4ee 0%, #5b8cff 55%, #fe2c55 100%);
+    --grad-douyin: linear-gradient(120deg, #25f4ee, #fe2c55);
+
+    /* Radius */
+    --r-window: 16px;
+    --r-panel: 14px;
+    --r-chip: 8px;
+
+    /* Shadow */
+    --shadow-window: 0 40px 120px rgba(0, 0, 0, 0.6), 0 8px 32px rgba(0, 0, 0, 0.45);
+    --shadow-card: 0 8px 28px rgba(0, 0, 0, 0.28);
+    --shadow-glow-cyan: 0 0 24px rgba(37, 244, 238, 0.22);
+    --shadow-glow-red: 0 0 24px rgba(254, 44, 85, 0.25);
+
+    /* Motion */
+    --t-fast: 160ms cubic-bezier(.4, 0, .2, 1);
+    --t-normal: 300ms cubic-bezier(.4, 0, .2, 1);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: "Segoe UI Variable", "Segoe UI", "Microsoft YaHei UI", "PingFang SC", system-ui, sans-serif;
+    background: var(--bg-deep);
+    color: var(--text-primary);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 48px 24px;
+    overflow-x: hidden;
+  }
+
+  /* ============ Wallpaper behind the window (glassmorphism backdrop) ============ */
+  .wallpaper {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    background:
+      radial-gradient(1200px 700px at 18% 12%, rgba(37, 244, 238, 0.13), transparent 55%),
+      radial-gradient(1000px 640px at 82% 22%, rgba(254, 44, 85, 0.14), transparent 55%),
+      radial-gradient(900px 700px at 62% 92%, rgba(124, 58, 237, 0.16), transparent 60%),
+      radial-gradient(700px 500px at 8% 88%, rgba(91, 140, 255, 0.1), transparent 55%),
+      var(--bg-deep);
+  }
+  .blob {
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(90px);
+    opacity: 0.5;
+    z-index: 0;
+    animation: drift 18s ease-in-out infinite alternate;
+  }
+  .blob-1 { width: 420px; height: 420px; left: 6%; top: 8%; background: rgba(37, 244, 238, 0.35); }
+  .blob-2 { width: 480px; height: 480px; right: 4%; top: 30%; background: rgba(254, 44, 85, 0.32); animation-delay: -6s; }
+  .blob-3 { width: 380px; height: 380px; left: 38%; bottom: -8%; background: rgba(124, 58, 237, 0.4); animation-delay: -12s; }
+  @keyframes drift {
+    from { transform: translate(0, 0) scale(1); }
+    to   { transform: translate(40px, -30px) scale(1.12); }
+  }
+
+  /* ============ App Window ============ */
+  .window {
+    position: relative;
+    z-index: 1;
+    width: 1240px;
+    max-width: 100%;
+    height: 780px;
+    border-radius: var(--r-window);
+    background: linear-gradient(160deg, rgba(20, 26, 44, 0.72), rgba(12, 16, 28, 0.78));
+    backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
+    border: 1px solid var(--glass-border-strong);
+    box-shadow: var(--shadow-window);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* ---- Title bar ---- */
+  .titlebar {
+    height: 48px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    padding-left: 16px;
+    user-select: none;
+    background: linear-gradient(180deg, rgba(255,255,255,0.045), rgba(255,255,255,0.015));
+    border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  }
+  .app-logo {
+    width: 26px; height: 26px;
+    border-radius: 8px;
+    background: var(--grad-douyin);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px;
+    box-shadow: var(--shadow-glow-cyan);
+    margin-right: 10px;
+  }
+  .app-title { font-size: 13px; font-weight: 600; letter-spacing: 0.3px; }
+  .app-title span { color: var(--text-tertiary); font-weight: 400; margin-left: 8px; font-size: 12px; }
+
+  .titlebar-status {
+    display: flex; align-items: center; gap: 8px;
+    margin-left: 24px;
+  }
+  .status-pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 11px;
+    color: var(--text-secondary);
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    padding: 4px 10px;
+    border-radius: 20px;
+  }
+  .dot { width: 6px; height: 6px; border-radius: 50%; }
+  .dot-live { background: #34d399; box-shadow: 0 0 8px rgba(52, 211, 153, 0.8); animation: pulse 2s infinite; }
+  .dot-guard { background: var(--accent-cyan); box-shadow: 0 0 8px rgba(37, 244, 238, 0.8); }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.45; } }
+
+  /* Windows-style window controls */
+  .win-controls { margin-left: auto; display: flex; height: 100%; }
+  .win-btn {
+    width: 46px; height: 100%;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: background var(--t-fast), color var(--t-fast);
+  }
+  .win-btn:hover { background: rgba(255, 255, 255, 0.09); color: var(--text-primary); }
+  .win-btn.close:hover { background: #e81123; color: #fff; }
+  .win-btn svg { width: 11px; height: 11px; stroke: currentColor; stroke-width: 1.2; fill: none; }
+
+  /* ---- Body layout ---- */
+  .body {
+    flex: 1;
+    display: flex;
+    gap: 16px;
+    padding: 16px;
+    min-height: 0;
+  }
+
+  .glass {
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    border-radius: var(--r-panel);
+  }
+
+  /* ---- Left: video preview column ---- */
+  .main-col { flex: 1; display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+
+  .video-frame {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+    border-radius: var(--r-panel);
+    overflow: hidden;
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid var(--glass-border);
+    box-shadow: inset 0 0 60px rgba(0,0,0,0.35);
+  }
+  /* camera-feed placeholder */
+  .video-feed {
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(560px 380px at 50% 42%, rgba(91, 140, 255, 0.14), transparent 70%),
+      repeating-linear-gradient(0deg, rgba(255,255,255,0.012) 0 2px, transparent 2px 4px),
+      linear-gradient(180deg, #131a2c 0%, #0d1220 100%);
+  }
+  /* scan line */
+  .scanline {
+    position: absolute; left: 0; right: 0; height: 90px;
+    background: linear-gradient(180deg, transparent, rgba(37, 244, 238, 0.07), transparent);
+    animation: scan 4.5s ease-in-out infinite;
+    pointer-events: none;
+  }
+  @keyframes scan { 0% { top: -12%; } 55% { top: 96%; } 100% { top: -12%; } }
+
+  /* face mesh visualization */
+  .face-mesh {
+    position: absolute;
+    left: 50%; top: 46%;
+    transform: translate(-50%, -50%);
+    width: 300px; height: 340px;
+  }
+  .face-mesh svg { width: 100%; height: 100%; overflow: visible; }
+  .mesh-line { stroke: rgba(37, 244, 238, 0.35); stroke-width: 1; fill: none; }
+  .mesh-dot { fill: rgba(37, 244, 238, 0.85); }
+  .mesh-core { fill: rgba(254, 44, 85, 0.9); }
+  .face-ring {
+    position: absolute; left: 50%; top: 46%;
+    transform: translate(-50%, -50%);
+    width: 330px; height: 380px;
+    border-radius: 48% 52% 50% 50% / 55% 48% 52% 45%;
+    border: 1.5px dashed rgba(37, 244, 238, 0.3);
+    animation: breathe 3.2s ease-in-out infinite;
+  }
+  @keyframes breathe { 0%,100% { transform: translate(-50%,-50%) scale(1); opacity: .7; } 50% { transform: translate(-50%,-50%) scale(1.05); opacity: 1; } }
+
+  /* HUD overlays */
+  .hud {
+    position: absolute;
+    display: flex; align-items: center; gap: 8px;
+    font-size: 11.5px;
+    padding: 6px 12px;
+    border-radius: var(--r-chip);
+    background: rgba(10, 14, 24, 0.55);
+    border: 1px solid var(--glass-border);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+  .hud-tl { top: 14px; left: 14px; color: var(--text-secondary); }
+  .hud-tl b { color: var(--accent-cyan); font-weight: 600; }
+  .hud-tr { top: 14px; right: 14px; font-family: "Cascadia Code", "JetBrains Mono", Consolas, monospace; color: var(--text-secondary); }
+  .hud-tr em { font-style: normal; color: var(--text-primary); }
+  .hud-bl { bottom: 14px; left: 14px; right: auto; font-family: "Cascadia Code", "JetBrains Mono", Consolas, monospace; gap: 14px; }
+  .hud-bl .metric { display: flex; flex-direction: column; gap: 1px; }
+  .hud-bl .metric small { font-size: 9.5px; color: var(--text-tertiary); letter-spacing: 0.5px; }
+  .hud-bl .metric b { font-size: 12.5px; font-weight: 600; color: var(--text-primary); }
+  .hud-bl .metric b.warn { color: var(--accent-cyan); }
+
+  /* gesture toast inside video */
+  .gesture-toast {
+    position: absolute;
+    bottom: 16px; left: 50%; transform: translateX(-50%);
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 18px;
+    border-radius: 12px;
+    background: rgba(10, 14, 24, 0.6);
+    border: 1px solid rgba(37, 244, 238, 0.35);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    box-shadow: var(--shadow-glow-cyan);
+    font-size: 13.5px;
+    animation: toast-in 500ms cubic-bezier(.2,.9,.3,1.2);
+  }
+  .gesture-toast .g-icon { font-size: 18px; }
+  .gesture-toast .g-action { color: var(--accent-cyan); font-weight: 600; }
+  @keyframes toast-in { from { opacity: 0; transform: translateX(-50%) translateY(14px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
+
+  /* no-face state (防偷窥 demo) */
+  .no-face-mask {
+    position: absolute; inset: 0;
+    display: none;
+    flex-direction: column;
+    align-items: center; justify-content: center; gap: 14px;
+    background: rgba(6, 8, 14, 0.82);
+    backdrop-filter: blur(6px);
+  }
+  .no-face-mask.show { display: flex; }
+  .no-face-mask .big-icon { font-size: 44px; opacity: 0.85; }
+  .no-face-mask .t1 { font-size: 16px; font-weight: 600; }
+  .no-face-mask .t2 { font-size: 12px; color: var(--text-secondary); font-family: Consolas, monospace; }
+
+  /* ---- Floating menu: two main cards ---- */
+  .menu-bar { display: flex; gap: 16px; flex-shrink: 0; }
+
+  .menu-card {
+    flex: 1;
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 18px 22px;
+    border-radius: var(--r-panel);
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    cursor: pointer;
+    transition: all var(--t-normal);
+    overflow: hidden;
+  }
+  .menu-card:hover { background: var(--glass-bg-strong); border-color: var(--glass-border-strong); transform: translateY(-2px); box-shadow: var(--shadow-card); }
+  .menu-card .m-icon {
+    width: 52px; height: 52px;
+    border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 24px;
+    background: rgba(255, 255, 255, 0.07);
+    border: 1px solid var(--glass-border);
+    flex-shrink: 0;
+  }
+  .menu-card .m-text { flex: 1; min-width: 0; }
+  .menu-card .m-title { font-size: 16px; font-weight: 700; margin-bottom: 4px; display: flex; align-items: center; gap: 8px; }
+  .menu-card .m-sub { font-size: 12px; color: var(--text-secondary); line-height: 1.5; }
+  .menu-card .m-kbd {
+    font-size: 10.5px; color: var(--text-tertiary);
+    margin-top: 6px;
+    font-family: Consolas, monospace;
+  }
+  .menu-card .m-kbd b { color: var(--text-secondary); font-weight: 600; }
+
+  /* active mode */
+  .menu-card.active {
+    background: linear-gradient(140deg, rgba(37,244,238,0.1), rgba(254,44,85,0.1));
+    border-color: rgba(37, 244, 238, 0.45);
+    box-shadow: var(--shadow-glow-cyan);
+  }
+  .menu-card.active .m-icon { background: var(--grad-douyin); border-color: transparent; box-shadow: var(--shadow-glow-cyan); }
+  .menu-card.active::after {
+    content: "使用中";
+    position: absolute; top: 12px; right: 14px;
+    font-size: 10px; font-weight: 600;
+    color: #06121a;
+    background: var(--accent-cyan);
+    padding: 3px 9px;
+    border-radius: 20px;
+    letter-spacing: 0.5px;
+  }
+
+  /* toggle switch (防偷窥) */
+  .toggle {
+    width: 52px; height: 28px;
+    border-radius: 20px;
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid var(--glass-border);
+    position: relative;
+    flex-shrink: 0;
+    transition: all var(--t-normal);
+    cursor: pointer;
+  }
+  .toggle::before {
+    content: "";
+    position: absolute; top: 3px; left: 3px;
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    background: #fff;
+    transition: all var(--t-normal);
+  }
+  .toggle.on { background: linear-gradient(120deg, #25f4ee, #34d399); border-color: transparent; box-shadow: 0 0 18px rgba(37, 244, 238, 0.4); }
+  .toggle.on::before { left: 27px; }
+  .toggle-label { font-size: 11px; color: var(--text-secondary); font-weight: 600; width: 30px; text-align: center; }
+
+  /* ---- Right sidebar ---- */
+  .side-col { width: 300px; flex-shrink: 0; display: flex; flex-direction: column; gap: 16px; min-height: 0; }
+
+  .panel { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+  .panel-title {
+    font-size: 11px; font-weight: 700;
+    letter-spacing: 1.5px;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .panel-title::after { content: ""; flex: 1; height: 1px; background: var(--glass-border); }
+
+  /* gesture list */
+  .gesture-row { display: flex; align-items: center; gap: 10px; }
+  .gesture-row .g-emoji { font-size: 16px; width: 22px; text-align: center; }
+  .gesture-row .g-name { font-size: 12.5px; width: 74px; color: var(--text-secondary); flex-shrink: 0; }
+  .g-bar {
+    flex: 1; height: 6px;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.08);
+    overflow: hidden;
+  }
+  .g-bar i {
+    display: block; height: 100%;
+    border-radius: 4px;
+    background: var(--grad-douyin);
+    width: 0%;
+    transition: width 120ms linear;
+  }
+  .g-val { font-size: 11px; font-family: Consolas, monospace; color: var(--text-tertiary); width: 34px; text-align: right; }
+
+  /* log panel */
+  .log-panel { flex: 1; min-height: 0; }
+  .log-list {
+    flex: 1;
+    overflow-y: auto;
+    display: flex; flex-direction: column; gap: 8px;
+    font-family: Consolas, "Cascadia Code", monospace;
+    font-size: 11.5px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,0.15) transparent;
+  }
+  .log-item { display: flex; gap: 8px; line-height: 1.5; animation: log-in 300ms ease; }
+  @keyframes log-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+  .log-time { color: var(--text-tertiary); flex-shrink: 0; }
+  .log-msg { color: var(--text-secondary); }
+  .log-msg b { color: var(--accent-cyan); font-weight: 600; }
+  .log-msg b.red { color: var(--accent-red); }
+  .log-msg b.green { color: #34d399; }
+
+  /* system status */
+  .sys-grid { display: flex; flex-direction: column; gap: 8px; }
+  .sys-row { display: flex; justify-content: space-between; font-size: 12px; }
+  .sys-row .k { color: var(--text-tertiary); }
+  .sys-row .v { color: var(--text-secondary); font-family: Consolas, monospace; }
+  .sys-row .v.ok { color: #34d399; }
+  .privacy-note {
+    margin-top: 2px;
+    font-size: 11px; line-height: 1.6;
+    color: var(--text-tertiary);
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: rgba(52, 211, 153, 0.06);
+    border: 1px solid rgba(52, 211, 153, 0.18);
+  }
+  .privacy-note b { color: #34d399; font-weight: 600; }
+
+  /* footer hint bar */
+  .hintbar {
+    flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center; gap: 22px;
+    padding: 9px 16px 13px;
+    font-size: 11px;
+    color: var(--text-tertiary);
+  }
+  .hintbar .h-item { display: flex; align-items: center; gap: 6px; }
+  .hintbar .h-key {
+    padding: 2px 7px;
+    border-radius: 6px;
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    font-family: Consolas, monospace;
+    color: var(--text-secondary);
+  }
+</style>
+</head>
+<body>
+
+<div class="wallpaper"></div>
+<div class="blob blob-1"></div>
+<div class="blob blob-2"></div>
+<div class="blob blob-3"></div>
+
+<div class="window">
+
+  <!-- ================= Title bar ================= -->
+  <header class="titlebar">
+    <div class="app-logo">👁</div>
+    <div class="app-title">FaceAction<span>面部控制助手 v0.5</span></div>
+    <div class="titlebar-status">
+      <div class="status-pill"><span class="dot dot-live"></span>摄像头已连接 · 1080p</div>
+      <div class="status-pill" id="guardPill" style="display:none"><span class="dot dot-guard"></span>防偷窥已开启</div>
+    </div>
+    <div class="win-controls">
+      <div class="win-btn" title="最小化">
+        <svg viewBox="0 0 12 12"><line x1="1" y1="6" x2="11" y2="6"/></svg>
+      </div>
+      <div class="win-btn" title="最大化">
+        <svg viewBox="0 0 12 12"><rect x="1.5" y="1.5" width="9" height="9" rx="1.5"/></svg>
+      </div>
+      <div class="win-btn close" title="关闭">
+        <svg viewBox="0 0 12 12"><line x1="1.5" y1="1.5" x2="10.5" y2="10.5"/><line x1="10.5" y1="1.5" x2="1.5" y2="10.5"/></svg>
+      </div>
+    </div>
+  </header>
+
+  <!-- ================= Body ================= -->
+  <div class="body">
+
+    <!-- ===== Left: video + menu ===== -->
+    <div class="main-col">
+
+      <!-- Video preview -->
+      <div class="video-frame">
+        <div class="video-feed"></div>
+        <div class="scanline"></div>
+
+        <!-- face mesh -->
+        <div class="face-mesh" id="faceMesh">
+          <svg viewBox="0 0 300 340">
+            <!-- outer contour -->
+            <path class="mesh-line" d="M150 22 C 220 22, 258 90, 254 165 C 250 245, 205 305, 150 318 C 95 305, 50 245, 46 165 C 42 90, 80 22, 150 22 Z"/>
+            <!-- brows -->
+            <path class="mesh-line" d="M85 125 C 105 112, 130 110, 143 118"/>
+            <path class="mesh-line" d="M157 118 C 170 110, 195 112, 215 125"/>
+            <!-- eyes -->
+            <ellipse class="mesh-line" cx="114" cy="145" rx="26" ry="13"/>
+            <ellipse class="mesh-line" cx="186" cy="145" rx="26" ry="13"/>
+            <circle class="mesh-core" cx="114" cy="145" r="5"/>
+            <circle class="mesh-core" cx="186" cy="145" r="5"/>
+            <!-- nose -->
+            <path class="mesh-line" d="M150 155 L 145 195 M 150 155 L 155 195 M 133 200 C 142 207, 158 207, 167 200"/>
+            <!-- mouth -->
+            <path class="mesh-line" d="M108 248 C 128 236, 172 236, 192 248 C 172 268, 128 268, 108 248 Z"/>
+            <path class="mesh-line" d="M108 248 C 128 252, 172 252, 192 248"/>
+          </svg>
+        </div>
+        <div class="face-ring"></div>
+
+        <!-- HUD -->
+        <div class="hud hud-tl">● 实时检测 <b>FaceMesh · 468 pts</b></div>
+        <div class="hud hud-tr">FPS <em>29.8</em>&nbsp;|&nbsp;延迟 <em>12ms</em></div>
+        <div class="hud hud-bl">
+          <div class="metric"><small>PITCH 俯仰</small><b class="warn" id="vPitch">-12.4°</b></div>
+          <div class="metric"><small>YAW 偏航</small><b id="vYaw">+3.1°</b></div>
+          <div class="metric"><small>ROLL 翻滚</small><b id="vRoll">-1.8°</b></div>
+          <div class="metric"><small>状态</small><b style="color:#34d399">FACE_OK</b></div>
+        </div>
+
+        <!-- gesture toast -->
+        <div class="gesture-toast" id="toast">
+          <span class="g-icon" id="toastIcon">👍</span>
+          <span>识别到 <span class="g-action" id="toastAction">点头</span> → <span id="toastResult">下一条视频 (↓)</span></span>
+        </div>
+
+        <!-- no-face mask (防偷窥演示) -->
+        <div class="no-face-mask" id="noFaceMask">
+          <div class="big-icon">🫥</div>
+          <div class="t1">未检测到人脸 · 已切换到桌面</div>
+          <div class="t2">Win+D 已发送 · 人脸回归后自动恢复</div>
+        </div>
+      </div>
+
+      <!-- ===== Two main menus ===== -->
+      <div class="menu-bar">
+        <div class="menu-card active" id="cardDouyin" onclick="selectDouyin()">
+          <div class="m-icon">🎵</div>
+          <div class="m-text">
+            <div class="m-title">看抖音</div>
+            <div class="m-sub">点头 → 下一条 · 抬头 → 上一条</div>
+            <div class="m-kbd">张嘴×2 <b>返回菜单</b></div>
+          </div>
+        </div>
+
+        <div class="menu-card" id="cardGuard" onclick="toggleGuard(event)">
+          <div class="m-icon">🛡️</div>
+          <div class="m-text">
+            <div class="m-title">防偷窥</div>
+            <div class="m-sub">人脸离开 → 自动切桌面 · 回归 → 恢复</div>
+            <div class="m-kbd">点头 <b>切换 开/关</b></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span class="toggle-label" id="guardLabel">关</span>
+            <div class="toggle" id="guardToggle"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== Right sidebar ===== -->
+    <div class="side-col">
+
+      <!-- gesture recognition -->
+      <div class="glass panel">
+        <div class="panel-title">动作识别</div>
+        <div class="gesture-row"><span class="g-emoji">👍</span><span class="g-name">点头</span><div class="g-bar"><i id="bNod"></i></div><span class="g-val" id="vNod">0%</span></div>
+        <div class="gesture-row"><span class="g-emoji">👆</span><span class="g-name">抬头</span><div class="g-bar"><i id="bUp"></i></div><span class="g-val" id="vUp">0%</span></div>
+        <div class="gesture-row"><span class="g-emoji">👈</span><span class="g-name">左摇</span><div class="g-bar"><i id="bL"></i></div><span class="g-val" id="vL">0%</span></div>
+        <div class="gesture-row"><span class="g-emoji">👉</span><span class="g-name">右摇</span><div class="g-bar"><i id="bR"></i></div><span class="g-val" id="vR">0%</span></div>
+        <div class="gesture-row"><span class="g-emoji">😮</span><span class="g-name">张嘴×2</span><div class="g-bar"><i id="bM"></i></div><span class="g-val" id="vM">0%</span></div>
+      </div>
+
+      <!-- log -->
+      <div class="glass panel log-panel">
+        <div class="panel-title">运行日志</div>
+        <div class="log-list" id="logList"></div>
+      </div>
+
+      <!-- system -->
+      <div class="glass panel">
+        <div class="panel-title">系统状态</div>
+        <div class="sys-grid">
+          <div class="sys-row"><span class="k">摄像头</span><span class="v ok">Integrated Camera ✓</span></div>
+          <div class="sys-row"><span class="k">检测模型</span><span class="v">MediaPipe FaceMesh</span></div>
+          <div class="sys-row"><span class="k">防偷窥防抖</span><span class="v">500ms</span></div>
+          <div class="sys-row"><span class="k">运行模式</span><span class="v" id="modeText">看抖音</span></div>
+        </div>
+        <div class="privacy-note"><b>🔒 隐私安全</b> — 所有画面均在本地离线处理，不上传任何数据。</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- footer hints -->
+  <div class="hintbar">
+    <div class="h-item"><span class="h-key">点头</span> 确认 / 下一条</div>
+    <div class="h-item"><span class="h-key">抬头</span> 上一条</div>
+    <div class="h-item"><span class="h-key">左摇 / 右摇</span> 切换菜单项</div>
+    <div class="h-item"><span class="h-key">张嘴×2</span> 返回选择态</div>
+  </div>
+</div>
+
+<script>
+  /* ---------- state ---------- */
+  let mode = 'douyin';        // 'douyin' | 'menu'
+  let guardOn = false;
+
+  const $ = id => document.getElementById(id);
+  const now = () => new Date().toTimeString().slice(0, 8);
+
+  function log(html) {
+    const list = $('logList');
+    const div = document.createElement('div');
+    div.className = 'log-item';
+    div.innerHTML = `<span class="log-time">${now()}</span><span class="log-msg">${html}</span>`;
+    list.prepend(div);
+    while (list.children.length > 24) list.lastChild.remove();
+  }
+
+  /* ---------- menu interaction ---------- */
+  function selectDouyin() {
+    if (mode === 'douyin') return;
+    mode = 'douyin';
+    $('cardDouyin').classList.add('active');
+    $('modeText').textContent = '看抖音';
+    $('toastIcon').textContent = '🎵';
+    $('toastAction').textContent = '点头确认';
+    $('toastResult').textContent = '进入看抖音 · 已打开抖音';
+    log('<b>进入看抖音模式</b>，已打开抖音网页');
+  }
+
+  function toggleGuard(e) {
+    e.stopPropagation();
+    guardOn = !guardOn;
+    $('guardToggle').classList.toggle('on', guardOn);
+    $('guardLabel').textContent = guardOn ? '开' : '关';
+    $('guardPill').style.display = guardOn ? 'flex' : 'none';
+    if (guardOn) {
+      log('<b class="green">防偷窥已开启</b> — 人脸离开画面 500ms 后自动 Win+D');
+    } else {
+      log('防偷窥已<b class="red">关闭</b>');
+      $('noFaceMask').classList.remove('show');
+    }
+  }
+
+  /* ---------- demo: no-face simulation ---------- */
+  $('noFaceMask').addEventListener('dblclick', () => $('noFaceMask').classList.remove('show'));
+  $('cardGuard').addEventListener('dblclick', () => {
+    if (!guardOn) return;
+    $('noFaceMask').classList.add('show');
+    log('<b class="red">no_face</b> 持续 500ms → 已发送 <b>Win+D</b> 切至桌面');
+    setTimeout(() => {
+      $('noFaceMask').classList.remove('show');
+      log('人脸回归 → <b class="green">已恢复</b> 浏览器窗口');
+    }, 3000);
+  });
+
+  /* ---------- fake gesture telemetry ---------- */
+  const gestures = [
+    { bar: 'bNod', val: 'vNod' }, { bar: 'bUp', val: 'vUp' },
+    { bar: 'bL', val: 'vL' }, { bar: 'bR', val: 'vR' }, { bar: 'bM', val: 'vM' }
+  ];
+  setInterval(() => {
+    gestures.forEach(g => {
+      const v = Math.random() < 0.82 ? Math.random() * 55 : 40 + Math.random() * 60;
+      $(g.bar).style.width = v + '%';
+      $(g.val).textContent = Math.round(v) + '%';
+    });
+    $('vPitch').textContent = (Math.random() * 30 - 15).toFixed(1) + '°';
+    $('vYaw').textContent = (Math.random() * 24 - 12).toFixed(1) + '°';
+    $('vRoll').textContent = (Math.random() * 8 - 4).toFixed(1) + '°';
+  }, 700);
+
+  /* ---------- rotating demo toasts ---------- */
+  const demoToasts = [
+    { i: '👍', a: '点头', r: '下一条视频 (↓)' },
+    { i: '👆', a: '抬头', r: '上一条视频 (↑)' },
+    { i: '😮', a: '张嘴×2', r: '返回选择态' }
+  ];
+  let ti = 0;
+  setInterval(() => {
+    if (mode !== 'douyin') return;
+    ti = (ti + 1) % demoToasts.length;
+    const t = demoToasts[ti];
+    $('toastIcon').textContent = t.i;
+    $('toastAction').textContent = t.a;
+    $('toastResult').textContent = t.r;
+    $('toast').style.animation = 'none';
+    void $('toast').offsetWidth;
+    $('toast').style.animation = '';
+  }, 3600);
+
+  /* ---------- boot logs ---------- */
+  log('FaceMesh 模型加载完成，468 关键点就绪');
+  log('摄像头就绪 <b>1080p · 30fps</b>');
+  log('<b>FaceAction</b> 启动完成 v0.5.0');
+</script>
+</body>
+</html>

@@ -1,0 +1,1 @@
+"""测试包：覆盖 core 纯逻辑（无需摄像头 / PySide6 / mediapipe）。"""
